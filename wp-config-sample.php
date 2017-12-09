@@ -39,7 +39,8 @@ define('LOGGED_IN_SALT',   'put your unique phrase here');
 define('NONCE_SALT',       'put your unique phrase here');
 
 define('FS_METHOD', 'direct');
-
+define('FORCE_SSL', true);
+define('FORCE_SSL_ADMIN',true);
 /**#@-*/
 
 /**
