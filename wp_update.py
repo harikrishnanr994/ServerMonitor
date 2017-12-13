@@ -133,7 +133,6 @@ def install_nginx():
         print op,err
         if remove_lock_file(err):
             break
-
     op,err= execute_command('curl ' + host)
     print op,err
     if op.startswith(const.CURL_OP):
@@ -153,6 +152,32 @@ def install_nginx():
     if err == const.NGINX_SUCCESS_MSG:
         print "nginx Configuation Successful...Now Restarting nginx"
     op,err= execute_command('sudo systemctl restart nginx.service')
+    print op,err
+    op,err= execute_command('sudo service nginx stop')
+    print op,err
+
+def install_varnish():
+    while True:
+        op,err= execute_command('sudo apt-get install varnish -y')
+        print op,err
+        if remove_lock_file(err):
+            break
+    with open('varnish.service', 'r') as myfile:
+        data = myfile.read()
+        ftp = ssh.open_sftp()
+        ftp.put('varnish.service','/lib/systemd/system/varnish.service')
+        ftp.close()
+        op,err= execute_command('sudo cat /lib/systemd/system/varnish.service')
+        print op,err
+        if op == data:
+            print "Varnish Config written Successfully"
+    op,err = execute_command('systemctl daemon-reload')
+    op,err = execute_command('sudo service varnish restart')
+    op,err = execute_command('sudo service nginx start')
+    op,err = execute_command('curl ' + host)
+    print op,err
+    if op.startswith(const.CURL_OP):
+        print "nginx with varnish Running Successfully"
 
 def initialize_firewall():
     op,err = execute_command('sudo ufw disable')
@@ -164,6 +189,8 @@ def initialize_firewall():
     op,err = execute_command('sudo ufw allow ssh')
     print op,err
     op,err = execute_command('sudo ufw allow www')
+    print op,err
+    op,err = execute_command('sudo ufw allow 8080/tcp')
     print op,err
     op,err = execute_command('sudo ufw allow ftp')
     print op,err
@@ -282,6 +309,7 @@ try:
    initialize_and_update_server()
    add_swap_space('4G')
    install_nginx()
+   install_varnish()
    initialize_firewall()
    install_ssl()
    install_php()
