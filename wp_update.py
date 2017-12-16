@@ -1,8 +1,9 @@
 import paramiko
 from contextlib import contextmanager
 import const
-host = '139.59.15.110'
-domain_name = 'mymds.xyz'
+import os
+host = '139.59.22.242'
+domain_name = 'mymds.tk'
 username = 'root'
 password = 'fuckoffanddie'
 email = 'sachingiridhar@gmail.com'
@@ -301,10 +302,10 @@ def install_wordpress():
     print op,err
     op,err= execute_command("sudo wp search-replace 'http://" + domain_name + "' 'https://" + domain_name + "' --skip-columns=guid --allow-root --path='/var/www/html/'")
     print op,err
-
 try:
    print "Creating Connection"
-   ssh.connect(host, username=username, password=password)
+   k = paramiko.RSAKey.from_private_key_file("/home/sachin/.ssh/id_rsa" , password=password)
+   ssh.connect(host, username=username, pkey=k)
    print "Connected"
    initialize_and_update_server()
    add_swap_space('4G')
@@ -315,6 +316,8 @@ try:
    install_php()
    install_mariadb()
    install_wordpress()
+except paramiko.BadHostKeyException:
+    os.system('ssh-keygen -f "/home/sachin/.ssh/known_hosts" -R ' + host)
 finally:
    print "Closing connection"
    ssh.close()

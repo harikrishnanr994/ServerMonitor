@@ -1,16 +1,14 @@
-secrets = []
+#!/usr/bin/python
+import re
+import subprocess
 
-with open("temp_secret.php",'r') as fp:
-    for line in fp:
-        secrets.append(line)
+line = subprocess.call("echo Hello World", shell=True)
+print line
+matchObj = re.match( r'ssh-keygen', line, re.M|re.I)
 
-with open('wp-config-sample.php','r') as fin, open('wp-config.php','w') as fout:
-    for i,wp_line in enumerate(fin):
-
-        print i,wp_line
-        if i>=31 and i<=38:
-            print i,wp_line
-            fout.write(secrets[i-31])
-
-        else:
-            fout.write(wp_line)
+if matchObj:
+   print "matchObj.group() : ", matchObj.group()
+   print "matchObj.group(1) : ", matchObj.group(1)
+   print "matchObj.group(2) : ", matchObj.group(2)
+else:
+   print "No match!!"
