@@ -7,3 +7,10 @@ from django.shortcuts import render
 
 def index(request):
     return render(request, 'index.html')
+
+def runscript(request):
+    email = request.GET['email']
+    username = request.GET['username']
+    host = request.GET['host']
+    domain = request.GET['domain']
+    return render(request, 'run_script.html',{"email" : email, "username" : username, "host" : host,"domain" : domain})
