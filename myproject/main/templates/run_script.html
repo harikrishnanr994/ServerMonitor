@@ -4,3 +4,13 @@
 <h2>{{email}}</h2>
 <h2>{{host}}</h2>
 {% endblock %}
+
+{% load static %}
+<script src="{% static "socket.io.js" %}"></script>
+  <script>
+    var socket = io('http://139.59.30.156:5000');
+    socket.emit("my message", { my: "datassss" });
+    socket.on("message_received", function(data){
+  	console.log(data);
+	});
+  </script>

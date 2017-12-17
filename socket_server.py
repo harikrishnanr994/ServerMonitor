@@ -17,6 +17,7 @@ def connect(sid, environ):
 @sio.on('my message')
 def message(sid, data):
     print('message ', data)
+    sio.emit('message_received', data)
 
 @sio.on('disconnect')
 def disconnect(sid):
