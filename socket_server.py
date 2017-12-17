@@ -5,16 +5,11 @@ from flask import Flask, render_template
 sio = socketio.Server()
 app = Flask(__name__)
 
-@app.route('/')
-def index():
-    """Serve the client-side application."""
-    return "render_template('index.html')"
-
 @sio.on('connect')
 def connect(sid, environ):
     print('connect ', sid , environ)
 
-@sio.on('my message')
+@sio.on('send_details')
 def message(sid, data):
     print('message ', data)
     sio.emit('message_received', data)

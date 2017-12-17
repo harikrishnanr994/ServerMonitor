@@ -8,9 +8,13 @@
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 </head>
 <body>
-  <script src="socket.io.js"></script>
-  <script>
-    var socket = io('http://localhost:5000');
-    socket.emit('my message', { my: 'datassss' });
-  </script>
+  <script src="{% static "socket.io.js" %}"></script>
+    <script>
+      var host_name = window.location.hostname;
+      var socket = io('http://' + host_name+':5000');
+      socket.emit("my message", { my: "datassss" });
+      socket.on("message_received", function(data){
+    	console.log(data);
+  	});
+    </script>
 </html>

@@ -83,6 +83,13 @@ $(document).ready(function() {
                       message: 'Not a valid IP address'
                     }
                 }
+            },
+            domain: {
+                validators: {
+                    notEmpty: {
+                        message: 'The domain is required and cannot be empty'
+                    }
+                }
             }
         }
     });
