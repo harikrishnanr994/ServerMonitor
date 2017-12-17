@@ -7,9 +7,8 @@
 {% load static %}
 <script src="{% static "socket.io.js" %}"></script>
   <script>
-    var socket = io('http://139.59.30.156:5000');
     var host_name = window.location.hostname;
-    console.log(host_name);
+    var socket = io('http://' + host_name+':5000');
     socket.emit("my message", { my: "datassss" });
     socket.on("message_received", function(data){
   	console.log(data);
