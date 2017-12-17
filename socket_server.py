@@ -11,7 +11,12 @@ def connect(sid, environ):
 
 @sio.on('send_details')
 def message(sid, data):
-    print('message ', data)
+    print ('message ', data)
+    print 'host : ',data['host']
+    print 'domain : ',data['domain']
+    print 'email : ',data['email']
+    print 'username : ',data['username']
+
     sio.emit('message_received', data)
 
 @sio.on('disconnect')
