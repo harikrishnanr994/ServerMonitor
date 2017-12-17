@@ -14,3 +14,7 @@ def runscript(request):
     host = request.GET['host']
     domain = request.GET['domain']
     return render(request, 'run_script.html',{"email" : email, "username" : username, "host" : host,"domain" : domain})
+<<<<<<< HEAD
+
+=======
+>>>>>>> c359759d1f8859b42b6946729cdd5113e4522c07
