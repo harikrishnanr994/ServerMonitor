@@ -8,13 +8,13 @@
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-validator/0.5.3/js/bootstrapValidator.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
 </head>
 <body>
 
 <div class="container">
   <h2>Enter Your Details</h2>
   <form action="/run_script" id="serverForm">
-    {% csrf_token %}
     <div class="form-group">
       <label for="email">Email:</label>
       <input type="email" class="form-control" id="email" placeholder="Enter email" name="email">
@@ -39,6 +39,10 @@
         <div class="col-md-9 col-md-offset-3">
             <div id="messages"></div>
         </div>
+    </div>
+    <div class="form-group">
+      <label for="ssh">SSH KEY:</label>
+      <textarea class="form-control" rows="5" id="ssh">ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCfHTu0E+7ewrcMFTuBUWwfY///4pJ63U29w43x2NyMcIInE9lYrgPV/cZRh05jM1tq4asmDnJvy9E+xACTrMgvDtr50sSF0F1srXzDhQaGXp9iuHKntX+z/kAGRJ3z1u/iLKA1pyqGndAHNYy1dotDKXVx9y+Zq8ZnR25Vc27hQjKFofKfNzeH/5nceISjitZ2ThCeuJFZIma6uHTppC0qegKeL24uCGOOvP1Kv3oxCWum1SEI9SUcjsZTITe4XgrHAUJ7bLSfUJQkviPPF6o7GQN4RkJpfYu3CXFIDifj5fSS64jFby17WPRJSPVYlC+IOrOqnThZBPElfojADLMz gd@Clouddeity</textarea>
     </div>
     <div class="form-group">
         <div class="col-md-9 col-md">

@@ -332,7 +332,7 @@ def connect_to_ssh(host,domain,email,username,password):
         scheduler.start()
         step = {}
         print "Creating Connection"
-        k = paramiko.RSAKey.from_private_key_file("/home/sachin/.ssh/id_rsa" , password='fuckoffanddie')
+        k = paramiko.RSAKey.from_private_key_file("/home/gd/.ssh/id_rsa" , password='fuckoffanddie')
         ssh.connect(host, username='root', pkey=k)
         print "Connected"
         sio.emit('ssh_connected', 'SSH Connected')
@@ -370,7 +370,7 @@ def connect_to_ssh(host,domain,email,username,password):
         step['percent'] = '100%'
         sio.emit('step', step)
     except paramiko.BadHostKeyException:
-        os.system('ssh-keygen -f "/home/sachin/.ssh/known_hosts" -R ' + host)
+        os.system('ssh-keygen -f "/home/gd/.ssh/known_hosts" -R ' + host)
         connect_to_ssh(host)
     finally:
        print "Closing connection"
