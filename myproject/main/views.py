@@ -9,7 +9,6 @@ from django.views.decorators.csrf import csrf_exempt
 def index(request):
     return render(request, 'index_main.html')
 
-@csrf_exempt
 def runscript(request):
     if request.method == 'POST':
         return "SSSS"
