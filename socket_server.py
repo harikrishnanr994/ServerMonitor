@@ -406,4 +406,4 @@ def disconnect(sid):
 if __name__ == '__main__':
     # wrap Flask application with socketio's middleware
     # deploy as an eventlet WSGI server
-    app.run(threaded=True,port=5000)
+    app.run(threaded=True,host='0.0.0.0',port=5000)
