@@ -4,17 +4,41 @@
   <title>Bootstrap Example</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script type="text/javascript" src="http://code.jquery.com/jquery-1.10.2.js"></script>
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 </head>
 <body>
-  <script src="{% static "socket.io.js" %}"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
+  <script>
+  function printHTML(message)
+  {
+    document.write(message + '<br/>');
+  }
+
+  </script>
     <script>
       var host_name = window.location.hostname;
-      var socket = io('http://' + host_name+':5000');
-      socket.emit("my message", { my: "datassss" });
-      socket.on("message_received", function(data){
-    	console.log(data);
-  	});
+      console.log(host_name);
+      var socket = io('http://localhost:5000',{connect_timeout : 40000});
+      var details = { host: "139.59.22.242" , email: "sachingiridhar@gmail.com" , domain : "mymds.tk" , username : "MySachin2", password : "fuckoffanddie"};
+      socket.emit("send_details", details);
+      socket.on("socket_connected", function(data){
+         console.log(data)
+    	   printHTML("Socket Connected");
+  	  });
+      socket.on("ssh_connected", function(data){
+         console.log(data)
+    	   printHTML("Remote Connection Established");
+  	  });
+      socket.on("step", function(data){
+         var name = data['name'];
+         var percent = data['percent'];
+         console.log(data)
+    	   printHTML(name + " " + percent);
+  	  });
+      socket.on("heartbeat", function(data){
+         console.log(data)
+  	  });
     </script>
 </html>

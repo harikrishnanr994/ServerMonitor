@@ -1,9 +1,4 @@
 {% block content %}
-<p>Hey Welcome to My Website</p>
-<h2>{{email}}</h2>
-<h2>{{host}}</h2>
-<h2>{{domain}}</h2>
-<h2>{{username}}</h2>
 
 {% endblock %}
 
@@ -12,8 +7,24 @@
   <script>
     var host_name = window.location.hostname;
     var socket = io('http://' + host_name+':5000');
+    console.log("{{host}}");
     socket.emit("send_details", { host: "{{host}}" , email: "{{email}}" , domain : "{{domain}}" , username : "{{username}}"});
-    socket.on("message_received", function(data){
-  	console.log(data);
-	  });
+    socket.emit("send_details", details);
+    socket.on("socket_connected", function(data){
+       console.log(data)
+       printHTML("Socket Connected");
+    });
+    socket.on("ssh_connected", function(data){
+       console.log(data)
+       printHTML("Remote Connection Established");
+    });
+    socket.on("step", function(data){
+       var name = data['name'];
+       var percent = data['percent'];
+       console.log(data)
+       printHTML(name + " " + percent);
+    });
+    socket.on("heartbeat", function(data){
+       console.log(data)
+    });
   </script>
