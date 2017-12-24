@@ -399,7 +399,7 @@ def connect_to_ssh(host,domain,email,username,password,sid):
             step['name'] = 'Installing nginx'
             step['percent'] = '20%'
             sio.emit('step', step)
-            install_nginx(host,domain)            
+            install_nginx(host,domain)
         step['name'] = 'Installing Varnish'
         step['percent'] = '30%'
         sio.emit('step', step)
