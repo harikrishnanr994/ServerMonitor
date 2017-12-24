@@ -1,33 +1,66 @@
-{% block content %}
+<html lang="en">
+<head>
+  <title>Bootstrap Example</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script type="text/javascript" src="http://code.jquery.com/jquery-1.10.2.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+<style>
+body {
+  font-family: "Roboto", "Open Sans", sans-serif;
+}
 
-{% endblock %}
+h3 {
+  text-align: center;
+}
 
+</style>
+<body>
+  <div class="progress" style="width: 700px; margin: auto; margin-top: 50px;">
+    <div id="progress_bar" class="progress-bar progress-bar-striped active" role="progressbar"
+    aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%; min-width: 2em;">
+    0%
+    </div>
+  </div>
+  <h3 id="progress_text"></h3>
+
+  <h2 style="text-align: center; margin-top: 50px;">Completed List</h2>
+  <ul id="completed_list" class="list-group" style="width: 700px; margin: auto;">
+  </ul>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
+  <script>
+  function changeProgress(message,percent)
+  {
+    var old = $("#progress_text").text();
+    $("#progress_text").text(message);
+    $("#progress_bar").css("width",percent);
+    $("#progress_bar").text(percent);
+    if(old!='')
+      $('#completed_list').append('<li class="list-group-item"><span class="badge" style = "background-color: #468847;">✔</span>' +old+ '</li>');
+  }
+
+  </script>
 {% load static %}
  <script src="{% static "socket.io.js" %}"></script>
- <script>
- function printHTML(message)
- {
-   document.write(message + '<br/>');
- }
- </script>
   <script>
-    var host_name = window.location.hostname;
     var socket = io('http://139.59.30.156:5000');
     var details = {host: "{{host}}" , email: "{{email}}" , domain : "{{domain}}" , username : "{{username}}", password : "{{password}}"};
     socket.emit("send_details", details);
     socket.on("socket_connected", function(data){
-       console.log(data)
-       printHTML("Socket Connected");
+       console.log(data);
+       changeProgress("Socket Connected","0%");
     });
     socket.on("ssh_connected", function(data){
-       console.log(data)
-       printHTML("Remote Connection Established");
+       console.log(data);
+       changeProgress("Remote Connection Established","5%");
     });
     socket.on("step", function(data){
        var name = data['name'];
        var percent = data['percent'];
-       console.log(data)
-       printHTML(name + " " + percent);
+       console.log(data);
+       changeProgress(name,percent);
     });
     socket.on("heartbeat", function(data){
        console.log(data)

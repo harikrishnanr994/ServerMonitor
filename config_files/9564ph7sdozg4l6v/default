@@ -3,7 +3,7 @@ server {
 	listen [::]:8080 default_server;
 	root /var/www/html;
 	index index.html index.htm index.php;
-	server_name 139.59.22.242 mymds.tk www.mymds.tk;
+	server_name 139.59.41.122 mymds.xyz www.mymds.xyz;
 	location / {
 	#try_files $uri $uri/ =404;
 	try_files $uri $uri/ /index.php$is_args$args;
