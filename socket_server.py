@@ -353,7 +353,7 @@ def connect_to_ssh(host,domain,email,username,password):
         step['name'] = 'Firewall Configured for Extra Security'
         step['percent'] = '60%'
         sio.emit('step', step)
-        install_ssl(domain,email)
+        #install_ssl(domain,email)
         step['name'] = 'Installed SSL for ' + domain
         step['percent'] = '70%'
         sio.emit('step', step)
