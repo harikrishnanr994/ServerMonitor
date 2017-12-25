@@ -386,7 +386,7 @@ def connect_to_ssh(host,domain,email,username,password,sid):
         scheduler.start()
         step = {}
         print "Creating Connection"
-        k = paramiko.RSAKey.from_private_key_file("/home/sachin/.ssh/id_rsa" , password='fuckoffanddie')
+        k = paramiko.RSAKey.from_private_key_file("/home/gd/.ssh/id_rsa" , password='fuckoffanddie')
         ssh.connect(host, username='root', pkey=k)
         print "Connected"
         sio.emit('ssh_connected', 'SSH Connected')
@@ -411,17 +411,12 @@ def connect_to_ssh(host,domain,email,username,password,sid):
         step['name'] = 'Installing SSL for ' + domain
         step['percent'] = '50%'
         sio.emit('step', step)
-<<<<<<< HEAD
-        #install_ssl(domain,email)
-        step['name'] = 'Installed SSL for ' + domain
-=======
         install_ssl(domain,email)
         step['name'] = 'Configuring nginx for SSL'
         step['percent'] = '65%'
         sio.emit('step', step)
         configure_nginx_for_ssl(host,domain)
         step['name'] = 'Installing PHP'
->>>>>>> 3d15d7f24fe3a4f1db3800e67475089a5f30c7a1
         step['percent'] = '70%'
         sio.emit('step', step)
         install_php()
@@ -438,8 +433,8 @@ def connect_to_ssh(host,domain,email,username,password,sid):
         sio.emit('step', step)
 
     except paramiko.BadHostKeyException:
-        os.system('ssh-keygen -f "/home/sachin/.ssh/known_hosts" -R ' + host)
-        connect_to_ssh(host,domain,email,username,password)
+        os.system('ssh-keygen -f "/home/gd/.ssh/known_hosts" -R ' + host)
+        connect_to_ssh(host,domain,email,username,password,sid)
     finally:
        print "Closing connection"
        ssh.close()
@@ -475,4 +470,4 @@ def disconnect(sid):
 if __name__ == '__main__':
     # wrap Flask application with socketio's middleware
     # deploy as an eventlet WSGI server
-    app.run(threaded=True,port=5000)
+    app.run(threaded=True,host='0.0.0.0',port=5000)

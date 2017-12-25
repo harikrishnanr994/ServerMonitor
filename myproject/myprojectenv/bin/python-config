@@ -1,4 +1,4 @@
-#!/home/gd/myproject/myprojectenv/bin/python
+#!/home/gd/ServerMonitor/myproject/myprojectenv/bin/python
 
 import sys
 import getopt
