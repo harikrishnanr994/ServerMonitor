@@ -21,7 +21,7 @@ log.addHandler(h)
 
 scheduler = BackgroundScheduler()
 
-sio = socketio.Server(async_mode='threading',logger=True, ping_timeout = 240 , ping_interval = 30)
+sio = socketio.Server(logger=True, ping_timeout = 240 , ping_interval = 30)
 app = Flask(__name__)
 app.wsgi_app = socketio.Middleware(sio, app.wsgi_app)
 
@@ -470,4 +470,4 @@ def disconnect(sid):
 if __name__ == '__main__':
     # wrap Flask application with socketio's middleware
     # deploy as an eventlet WSGI server
-    app.run(threaded=True,host='0.0.0.0',port=5000)
+    app.run(host='0.0.0.0')
