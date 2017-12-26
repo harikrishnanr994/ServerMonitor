@@ -19,15 +19,15 @@ h = logging.StreamHandler()
 h.setFormatter(fmt)
 log.addHandler(h)
 
-scheduler = BackgroundScheduler()
-sio = socketio.Server(async_mode='threading',logger=True, ping_timeout = 240 , ping_interval = 30)
 
+sio = socketio.Server(async_mode='threading',logger=True, ping_timeout = 240 , ping_interval = 30)
 app = Flask(__name__)
 app.wsgi_app = socketio.Middleware(sio, app.wsgi_app)
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 ssh.load_system_host_keys()
+
 
 
 def generate_random_string(size):
@@ -377,75 +377,73 @@ def install_wordpress(email,password,domain,username):
     op,err= execute_command("sudo wp search-replace 'http://" + domain + "' 'https://" + domain + "' --skip-columns=guid --allow-root --path='/var/www/html/'")
     print op,err
 
-def sio_heartbeat():
-    sio.emit('heartbeat','heartbeat')
 
 def connect_to_ssh(host,domain,email,username,password,sid):
     try:
-        scheduler.add_job(sio_heartbeat, 'interval', seconds=20)
-        scheduler.start()
         step = {}
         print "Creating Connection"
-        k = paramiko.RSAKey.from_private_key_file("/home/gd/.ssh/id_rsa" , password='fuckoffanddie')
+        k = paramiko.RSAKey.from_private_key_file("/home/sachin/.ssh/id_rsa" , password='fuckoffanddie')
         ssh.connect(host, username='root', pkey=k)
         print "Connected"
-        sio.emit('ssh_connected', 'SSH Connected')
+        sio.emit('ssh_connected', 'SSH Connected',room=sid)
         step['name'] = 'Updating Packages'
         step['percent'] = '5%'
-        sio.emit('step', step)
+        sio.emit('step', step,room=sid)
         initialize_and_update_server()
         add_swap_space('4G')
         if is_nginx_installed():
             step['name'] = 'Installing nginx'
             step['percent'] = '20%'
-            sio.emit('step', step)
+            sio.emit('step', step,room=sid)
             install_nginx(host,domain)
+
         step['name'] = 'Installing Varnish'
         step['percent'] = '30%'
-        sio.emit('step', step)
+        sio.emit('step', step,room=sid)
         install_varnish(host)
         step['name'] = 'Configuring Firewall for Extra Security'
         step['percent'] = '40%'
-        sio.emit('step', step)
+        sio.emit('step', step,room=sid)
         initialize_firewall()
         step['name'] = 'Installing SSL for ' + domain
         step['percent'] = '50%'
-        sio.emit('step', step)
+        sio.emit('step', step,room=sid)
         install_ssl(domain,email)
         step['name'] = 'Configuring nginx for SSL'
         step['percent'] = '65%'
-        sio.emit('step', step)
+        sio.emit('step', step,room=sid)
         configure_nginx_for_ssl(host,domain)
         step['name'] = 'Installing PHP'
         step['percent'] = '70%'
-        sio.emit('step', step)
+        sio.emit('step', step,room=sid)
         install_php()
         step['name'] = 'Installing MariaDB'
         step['percent'] = '80%'
-        sio.emit('step', step)
+        sio.emit('step', step,room=sid)
         install_mariadb()
         step['name'] =  'Installing Wordpress'
         step['percent'] = '90%'
-        sio.emit('step', step)
+        sio.emit('step', step,room=sid)
         install_wordpress(email,password,domain,username)
         step['name'] =  'Completed'
         step['percent'] = '100%'
-        sio.emit('step', step)
+        sio.emit('step', step,room=sid)
 
     except paramiko.BadHostKeyException:
-        os.system('ssh-keygen -f "/home/gd/.ssh/known_hosts" -R ' + host)
-        connect_to_ssh(host,domain,email,username,password,sid)
+        os.system('ssh-keygen -f "/home/sachin/.ssh/known_hosts" -R ' + host)
+        connect_to_ssh(host,domain,email,username,password)
     finally:
        print "Closing connection"
        ssh.close()
-       scheduler.shutdown()
+       sio.leave_room(sid,sid)
        sio.disconnect(sid)
        print "Closed"
 
 @sio.on('connect')
 def connect(sid, environ):
     print('connect ', sid , environ)
-    sio.emit('socket_connected', "Socket Connected")
+    sio.enter_room(sid,sid)
+    sio.emit('socket_connected', "Socket Connected",room=sid)
 
 
 @sio.on('send_details')
@@ -470,4 +468,4 @@ def disconnect(sid):
 if __name__ == '__main__':
     # wrap Flask application with socketio's middleware
     # deploy as an eventlet WSGI server
-    app.run(threaded=True,host='0.0.0.0',port=5000)
+    app.run(threaded=True,port=5000)
