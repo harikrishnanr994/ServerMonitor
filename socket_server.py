@@ -286,7 +286,7 @@ def configure_nginx_for_ssl(host,domain):
         print "nginx Configuation Successful...Now Restarting nginx"
     op,err= execute_command('sudo systemctl restart nginx.service')
     print op,err
-    #shutil.rmtree('config_files/' + random)
+    shutil.rmtree('config_files/' + random)
 
 def install_php():
     while True:
@@ -436,7 +436,6 @@ def connect_to_ssh(host,domain,email,username,password,sid):
        print "Closing connection"
        ssh.close()
        sio.leave_room(sid,sid)
-       sio.disconnect(sid)
        print "Closed"
 
 @sio.on('connect')

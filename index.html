@@ -44,7 +44,7 @@ h3 {
 
   </script>
     <script>
-      var socket = io('http://localhost:5000',{connect_timeout : 40000});
+      var socket = io('http://localhost:5000',{connect_timeout : 40000} , transports: ['websocket']);
       var details = { host: "139.59.41.122" , email: "sachingiridhar@gmail.com" , domain : "mymds.xyz" , username : "MySachin2", password : "fuckoffanddie"};
       socket.emit("send_details", details);
       socket.on("socket_connected", function(data){
