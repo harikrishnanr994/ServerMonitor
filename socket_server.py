@@ -25,8 +25,6 @@ app = Flask(__name__)
 app.wsgi_app = socketio.Middleware(sio, app.wsgi_app)
 
 
-
-
 def generate_random_string(size):
     return ''.join(random.SystemRandom().choice(string.ascii_lowercase + string.digits) for _ in range(size))
 
@@ -34,18 +32,18 @@ def execute_command(c,ssh):
     stdin, stdout, stderr = ssh.exec_command(c)
     return (stdout.read(),stderr.read())
 
-def execute_command_with_input(c,g = False,ssh):
+def execute_command_with_input(c,ssh,g = False):
     stdin, stdout, stderr = ssh.exec_command(c,get_pty = g)
     return (stdin,stdout,stderr)
 
-def remove_lock_file(err):
+def remove_lock_file(err,ssh):
     print(err)
     if err.startswith(const.LOCK_ERR):
-        op,err= execute_command('sudo rm /var/lib/apt/lists/lock')
+        op,err= execute_command('sudo rm /var/lib/apt/lists/lock',ssh)
         print op,err
         if err == '':
             print "Success"
-        op,err = execute_command('sudo rm /var/cache/apt/archives/lock')
+        op,err = execute_command('sudo rm /var/cache/apt/archives/lock',ssh)
         print op,err
         if err == '':
             print "Success"
@@ -73,7 +71,7 @@ def cancel_duplicate_ssl(inp):
     inp.flush()
 
 def kill_certbot_process():
-    op,err = execute_command("for pid in $(ps -ef | grep 'certbot' | awk '{print $2}'); do kill -9 $pid; done")
+    op,err = execute_command("for pid in $(ps -ef | grep 'certbot' | awk '{print $2}'); do kill -9 $pid; done",ssh)
     print op,err
 
 
@@ -123,54 +121,54 @@ def write_commands_for_mariadb(inp):
     inp.write('exit;\n')
     inp.flush()
 
-def is_nginx_installed():
-    op,err = execute_command('test -x /usr/sbin/nginx && echo "Nginx installed"')
+def is_nginx_installed(ssh):
+    op,err = execute_command('test -x /usr/sbin/nginx && echo "Nginx installed"',ssh)
     if op.startswith('Nginx installed'):
         return True
     return False
 
-def initialize_and_update_server():
-    inp,op,err= execute_command_with_input('sudo add-apt-repository ppa:certbot/certbot')
+def initialize_and_update_server(ssh):
+    inp,op,err= execute_command_with_input('sudo add-apt-repository ppa:certbot/certbot',ssh)
     inp.write('\n')
     inp.flush()
     print op.read()
     while True:
-        op,err = execute_command('sudo apt-get update')
+        op,err = execute_command('sudo apt-get update',ssh)
         print op,err
-        if remove_lock_file(err):
+        if remove_lock_file(err,ssh):
             break
     while True:
-        op,err = execute_command('sudo apt-get install python-certbot-nginx -y')
+        op,err = execute_command('sudo apt-get install python-certbot-nginx -y',ssh)
         print op,err
-        if remove_lock_file(err):
+        if remove_lock_file(err,ssh):
             break
-def add_swap_space(swap):
-    op,err = execute_command('sudo fallocate -l ' + swap + ' /swapfile')
-    op,err = execute_command('sudo chmod 600 /swapfile')
+def add_swap_space(swap,ssh):
+    op,err = execute_command('sudo fallocate -l ' + swap + ' /swapfile',ssh)
+    op,err = execute_command('sudo chmod 600 /swapfile',ssh)
     print op,err
-    op,err = execute_command('sudo mkswap /swapfile')
-    op,err = execute_command('sudo swapon /swapfile')
-    op,err = execute_command('sudo cp /etc/fstab /etc/fstab.bak')
-    op,err = execute_command("echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab")
-    op,err = execute_command('sudo sysctl vm.swappiness=10')
+    op,err = execute_command('sudo mkswap /swapfile',ssh)
+    op,err = execute_command('sudo swapon /swapfile',ssh)
+    op,err = execute_command('sudo cp /etc/fstab /etc/fstab.bak',ssh)
+    op,err = execute_command("echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab",ssh)
+    op,err = execute_command('sudo sysctl vm.swappiness=10',ssh)
     print op,err
     with open('config_files/sysctl.conf', 'r') as myfile:
         data = myfile.read()
         ftp = ssh.open_sftp()
         ftp.put('config_files/sysctl.conf','/etc/sysctl.conf')
         ftp.close()
-        op,err = execute_command('sudo cat /etc/sysctl.conf')
+        op,err = execute_command('sudo cat /etc/sysctl.conf',ssh)
         print op,err
         if op == data:
             print "Swap Config written Successfully"
 
-def install_nginx(host,domain):
+def install_nginx(host,domain,ssh):
     while True:
-        op,err= execute_command('sudo apt-get install nginx -y')
+        op,err= execute_command('sudo apt-get install nginx -y',ssh)
         print op,err
-        if remove_lock_file(err):
+        if remove_lock_file(err,ssh):
             break
-    op,err= execute_command('curl ' + host)
+    op,err= execute_command('curl ' + host,ssh)
     print op,err
     if op.startswith(const.CURL_OP):
         print "nginx Running Successfully"
@@ -180,76 +178,76 @@ def install_nginx(host,domain):
     with open('config_files/def', 'r') as fin,open('config_files/' + random +'/default','w') as fout:
         data = fin.read().replace('139.59.15.110',host).replace('mymds.xyz',domain)
         fout.write(data)
-    op,err= execute_command('sudo mv /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default.backup')
+    op,err= execute_command('sudo mv /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default.backup',ssh)
     ftp = ssh.open_sftp()
     ftp.put('config_files/'+ random + '/default','/etc/nginx/sites-enabled/default')
     ftp.close()
-    op,err= execute_command('sudo cat /etc/nginx/sites-enabled/default')
+    op,err= execute_command('sudo cat /etc/nginx/sites-enabled/default',ssh)
     print op,err
     if op == data:
         print "nginx Config written Successfully"
-    op,err = execute_command('sudo nginx -t')
+    op,err = execute_command('sudo nginx -t',ssh)
     if err == const.NGINX_SUCCESS_MSG:
         print "nginx Configuation Successful...Now Restarting nginx"
-    op,err= execute_command('sudo systemctl restart nginx.service')
+    op,err= execute_command('sudo systemctl restart nginx.service',ssh)
     print op,err
     shutil.rmtree('config_files/' + random)
-    op,err= execute_command('sudo service nginx stop')
+    op,err= execute_command('sudo service nginx stop',ssh)
     print op,err
 
-def install_varnish(host):
+def install_varnish(host,ssh):
     while True:
-        op,err= execute_command('sudo apt-get install varnish -y')
+        op,err= execute_command('sudo apt-get install varnish -y',ssh)
         print op,err
-        if remove_lock_file(err):
+        if remove_lock_file(err,ssh):
             break
     with open('config_files/varnish.service', 'r') as myfile:
         data = myfile.read()
         ftp = ssh.open_sftp()
         ftp.put('config_files/varnish.service','/lib/systemd/system/varnish.service')
         ftp.close()
-        op,err= execute_command('sudo cat /lib/systemd/system/varnish.service')
+        op,err= execute_command('sudo cat /lib/systemd/system/varnish.service',ssh)
         print op,err
         if op == data:
             print "Varnish Config written Successfully"
-    op,err = execute_command('systemctl daemon-reload')
-    op,err = execute_command('sudo service varnish restart')
-    op,err = execute_command('sudo service nginx start')
-    op,err = execute_command('curl ' + host)
+    op,err = execute_command('systemctl daemon-reload',ssh)
+    op,err = execute_command('sudo service varnish restart',ssh)
+    op,err = execute_command('sudo service nginx start',ssh)
+    op,err = execute_command('curl ' + host,ssh)
     print op,err
     if op.startswith(const.CURL_OP):
         print "nginx with varnish Running Successfully"
 
-def initialize_firewall():
-    op,err = execute_command('sudo ufw disable')
+def initialize_firewall(ssh):
+    op,err = execute_command('sudo ufw disable',ssh)
     print op,err
-    op,err = execute_command('sudo ufw default deny incoming')
+    op,err = execute_command('sudo ufw default deny incoming',ssh)
     print op,err
-    op,err = execute_command('sudo ufw default allow outgoing')
+    op,err = execute_command('sudo ufw default allow outgoing',ssh)
     print op,err
-    op,err = execute_command('sudo ufw allow ssh')
+    op,err = execute_command('sudo ufw allow ssh',ssh)
     print op,err
-    op,err = execute_command('sudo ufw allow www')
+    op,err = execute_command('sudo ufw allow www',ssh)
     print op,err
-    op,err = execute_command('sudo ufw allow 8080/tcp')
+    op,err = execute_command('sudo ufw allow 8080/tcp',ssh)
     print op,err
-    op,err = execute_command('sudo ufw allow ftp')
+    op,err = execute_command('sudo ufw allow ftp',ssh)
     print op,err
-    op,err = execute_command("sudo ufw allow 'OpenSSH'")
+    op,err = execute_command("sudo ufw allow 'OpenSSH'",ssh)
     print op,err
-    op,err = execute_command("sudo ufw allow 'Nginx Full'")
+    op,err = execute_command("sudo ufw allow 'Nginx Full'",ssh)
     print op,err
-    op,err = execute_command("sudo ufw allow 'Nginx HTTP'")
+    op,err = execute_command("sudo ufw allow 'Nginx HTTP'",ssh)
     print op,err
-    inp,op,err = execute_command_with_input('sudo ufw enable')
+    inp,op,err = execute_command_with_input('sudo ufw enable',ssh)
     inp.write('y\n')
     inp.flush()
     print op.read()
-    op,err = execute_command('sudo ufw status')
+    op,err = execute_command('sudo ufw status',ssh)
     print op,err
 
-def install_ssl(domain,email):
-    inp,op,err = execute_command_with_input("sudo certbot --nginx -d " + domain + " -d www." + domain,True)
+def install_ssl(domain,email,ssh):
+    inp,op,err = execute_command_with_input("sudo certbot --nginx -d " + domain + " -d www." + domain,ssh,True)
     for line in iter(op.readline, ""):
         if line.startswith(const.LETS_ENCRYPT_DEFAULT):
             write_default_values_for_ssl(inp,email)
@@ -258,42 +256,42 @@ def install_ssl(domain,email):
         elif line.startswith(const.CERTBOT_ANOTHER_INSTANCE):
             another_instance = True
             kill_certbot_process()
-            install_ssl()
+            install_ssl(domain,email,ssh)
         print line
 
 
 
-def configure_nginx_for_ssl(host,domain):
+def configure_nginx_for_ssl(host,domain,ssh):
     random = generate_random_string(16)
     if not os.path.exists('config_files/' + random):
         os.makedirs('config_files/' + random)
     with open('config_files/def_ssl', 'r') as fin,open('config_files/' +  random +'/default','w') as fout:
         data = fin.read().replace('139.59.15.110',host).replace('mymds.xyz',domain)
         fout.write(data)
-    op,err= execute_command('sudo mv /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default.backup')
+    op,err= execute_command('sudo mv /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default.backup',ssh)
     ftp = ssh.open_sftp()
     ftp.put('config_files/' +  random +'/default','/etc/nginx/sites-enabled/default')
     ftp.close()
-    op,err= execute_command('sudo cat /etc/nginx/sites-enabled/default')
+    op,err= execute_command('sudo cat /etc/nginx/sites-enabled/default',ssh)
     print op,err
     if op == data:
         print "nginx Config written Successfully"
-    op,err = execute_command('sudo nginx -t')
+    op,err = execute_command('sudo nginx -t',ssh)
     if err == const.NGINX_SUCCESS_MSG:
         print "nginx Configuation Successful...Now Restarting nginx"
-    op,err= execute_command('sudo systemctl restart nginx.service')
+    op,err= execute_command('sudo systemctl restart nginx.service',ssh)
     print op,err
     shutil.rmtree('config_files/' + random)
 
-def install_php():
+def install_php(ssh):
     while True:
-        op,err= execute_command('sudo apt-get install php7.0 php7.0-fpm -y')
+        op,err= execute_command('sudo apt-get install php7.0 php7.0-fpm -y',ssh)
         print op,err
-        if remove_lock_file(err):
+        if remove_lock_file(err,ssh):
             break
 
-    op,err= execute_command('sudo systemctl start php7.0-fpm')
-    op,err= execute_command('sudo systemctl status php7.0-fpm')
+    op,err= execute_command('sudo systemctl start php7.0-fpm',ssh)
+    op,err= execute_command('sudo systemctl status php7.0-fpm',ssh)
     if const.PHP_RUNNING_MSG in op:
         print "PHP Successfully Running"
     with open('config_files/index.php', 'r') as myfile:
@@ -301,55 +299,55 @@ def install_php():
         ftp = ssh.open_sftp()
         ftp.put('config_files/index.php','/var/www/html/index.php')
         ftp.close()
-        op,err= execute_command('sudo cat /var/www/html/index.php')
+        op,err= execute_command('sudo cat /var/www/html/index.php',ssh)
         print op,err
         if op == data:
             print "PHP Index written Successfully"
 
-def install_mariadb():
+def install_mariadb(ssh):
     while True:
-        op,err= execute_command('sudo apt-get install mariadb-server mariadb-client php7.0-mysql -y')
+        op,err= execute_command('sudo apt-get install mariadb-server mariadb-client php7.0-mysql -y',ssh)
         print op,err
-        if remove_lock_file(err):
+        if remove_lock_file(err,ssh):
             break
-    op,err= execute_command('sudo systemctl status php7.0-fpm')
-    inp,op,err= execute_command_with_input('sudo mysql_secure_installation')
+    op,err= execute_command('sudo systemctl status php7.0-fpm',ssh)
+    inp,op,err= execute_command_with_input('sudo mysql_secure_installation',ssh)
     write_default_values_for_mariadb(inp)
     print "MariaDB Installed"
-    inp,op,err= execute_command_with_input('sudo mysql -u root -pwordpress',True)
+    inp,op,err= execute_command_with_input('sudo mysql -u root -pwordpress',ssh,True)
     write_commands_for_mariadb(inp)
     print "MariaDB Commands Successfully Executed"
     while True:
-        op,err= execute_command('sudo apt-get install php-curl php-gd php-mbstring php-mcrypt php-xml php-xmlrpc -y')
+        op,err= execute_command('sudo apt-get install php-curl php-gd php-mbstring php-mcrypt php-xml php-xmlrpc -y',ssh)
         print op,err
-        if remove_lock_file(err):
+        if remove_lock_file(err,ssh):
             break
-    op,err= execute_command('sudo systemctl restart php7.0-fpm')
+    op,err= execute_command('sudo systemctl restart php7.0-fpm',ssh)
     print op,err
 
-def install_wordpress(email,password,domain,username):
+def install_wordpress(email,password,domain,username,ssh):
     print "Downloading Wordpress"
-    op,err= execute_command('curl -O https://wordpress.org/latest.tar.gz')
+    op,err= execute_command('curl -O https://wordpress.org/latest.tar.gz',ssh)
     print op,err
-    op,err= execute_command('tar xzvf latest.tar.gz')
+    op,err= execute_command('tar xzvf latest.tar.gz',ssh)
     print op,err
     print "Wordpress Downloaded"
-    op,err= execute_command('cp wordpress/wp-config-sample.php wordpress/wp-config.php')
+    op,err= execute_command('cp wordpress/wp-config-sample.php wordpress/wp-config.php',ssh)
     print op,err
-    op,err= execute_command('mkdir wordpress/wp-content/upgrade')
-    op,err= execute_command('sudo cp -a wordpress/. /var/www/html')
+    op,err= execute_command('mkdir wordpress/wp-content/upgrade',ssh)
+    op,err= execute_command('sudo cp -a wordpress/. /var/www/html',ssh)
     print op,err
-    op,err= execute_command('sudo chown -R root:www-data /var/www/html')
+    op,err= execute_command('sudo chown -R root:www-data /var/www/html',ssh)
     print op,err
-    op,err= execute_command('sudo find /var/www/html -type d -exec chmod g+s {} \;')
+    op,err= execute_command('sudo find /var/www/html -type d -exec chmod g+s {} \;',ssh)
     print op,err
-    op,err= execute_command('sudo chmod g+w /var/www/html/wp-content')
+    op,err= execute_command('sudo chmod g+w /var/www/html/wp-content',ssh)
     print op,err
-    op,err= execute_command('sudo chmod -R g+w /var/www/html/wp-content/themes')
+    op,err= execute_command('sudo chmod -R g+w /var/www/html/wp-content/themes',ssh)
     print op,err
-    op,err= execute_command('sudo chmod -R g+w /var/www/html/wp-content/plugins')
+    op,err= execute_command('sudo chmod -R g+w /var/www/html/wp-content/plugins',ssh)
     print op,err
-    op,err= execute_command('curl -s https://api.wordpress.org/secret-key/1.1/salt/')
+    op,err= execute_command('curl -s https://api.wordpress.org/secret-key/1.1/salt/',ssh)
     print op,err
     with open('config_files/temp_secret.php', 'w') as myfile:
         myfile.write(op)
@@ -358,20 +356,20 @@ def install_wordpress(email,password,domain,username):
     ftp.put('config_files/wp-config.php','/var/www/html/wp-config.php')
     ftp.close()
     temp_secret = op
-    op,err= execute_command('sudo cat /var/www/html/wp-config.php')
+    op,err= execute_command('sudo cat /var/www/html/wp-config.php',ssh)
     print op,err
     print "Wordpress Configuration File Created"
-    op,err= execute_command('curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar')
+    op,err= execute_command('curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar',ssh)
     print op,err
-    op,err= execute_command('chmod +x wp-cli.phar')
+    op,err= execute_command('chmod +x wp-cli.phar',ssh)
     print op,err
-    op,err= execute_command('sudo mv wp-cli.phar /usr/local/bin/wp')
+    op,err= execute_command('sudo mv wp-cli.phar /usr/local/bin/wp',ssh)
     print op,err
-    op,err= execute_command('sudo wp cli version --allow-root')
+    op,err= execute_command('sudo wp cli version --allow-root',ssh)
     print op,err
-    op,err= execute_command('sudo wp core install --url="' +  domain + '"  --title="Your Blog Title" --admin_user="' + username + '" --admin_password="' +  password + '" --admin_email="' + email + '" --path="/var/www/html/" --allow-root')
+    op,err= execute_command('sudo wp core install --url="' +  domain + '"  --title="Your Blog Title" --admin_user="' + username + '" --admin_password="' +  password + '" --admin_email="' + email + '" --path="/var/www/html/" --allow-root',ssh)
     print op,err
-    op,err= execute_command("sudo wp search-replace 'http://" + domain + "' 'https://" + domain + "' --skip-columns=guid --allow-root --path='/var/www/html/'")
+    op,err= execute_command("sudo wp search-replace 'http://" + domain + "' 'https://" + domain + "' --skip-columns=guid --allow-root --path='/var/www/html/'",ssh)
     print op,err
 
 
@@ -389,42 +387,42 @@ def connect_to_ssh(host,domain,email,username,password,sid):
         step['name'] = 'Updating Packages'
         step['percent'] = '5%'
         sio.emit('step', step,room=sid)
-        initialize_and_update_server()
-        add_swap_space('4G')
-        if is_nginx_installed():
+        initialize_and_update_server(ssh)
+        add_swap_space('4G',ssh)
+        if is_nginx_installed(ssh):
             step['name'] = 'Installing nginx'
             step['percent'] = '20%'
             sio.emit('step', step,room=sid)
-            install_nginx(host,domain)
+            install_nginx(host,domain,ssh)
 
         step['name'] = 'Installing Varnish'
         step['percent'] = '30%'
         sio.emit('step', step,room=sid)
-        install_varnish(host)
+        install_varnish(host,ssh)
         step['name'] = 'Configuring Firewall for Extra Security'
         step['percent'] = '40%'
         sio.emit('step', step,room=sid)
-        initialize_firewall()
+        initialize_firewall(ssh)
         step['name'] = 'Installing SSL for ' + domain
         step['percent'] = '50%'
         sio.emit('step', step,room=sid)
-        install_ssl(domain,email)
+        install_ssl(domain,email,ssh)
         step['name'] = 'Configuring nginx for SSL'
         step['percent'] = '65%'
         sio.emit('step', step,room=sid)
-        configure_nginx_for_ssl(host,domain)
+        configure_nginx_for_ssl(host,domain,ssh)
         step['name'] = 'Installing PHP'
         step['percent'] = '70%'
         sio.emit('step', step,room=sid)
-        install_php()
+        install_php(ssh)
         step['name'] = 'Installing MariaDB'
         step['percent'] = '80%'
         sio.emit('step', step,room=sid)
-        install_mariadb()
+        install_mariadb(ssh)
         step['name'] =  'Installing Wordpress'
         step['percent'] = '90%'
         sio.emit('step', step,room=sid)
-        install_wordpress(email,password,domain,username)
+        install_wordpress(email,password,domain,username,ssh)
         step['name'] =  'Completed'
         step['percent'] = '100%'
         sio.emit('step', step,room=sid)
