@@ -24,20 +24,17 @@ sio = socketio.Server(async_mode='threading',logger=True, ping_timeout = 240 , p
 app = Flask(__name__)
 app.wsgi_app = socketio.Middleware(sio, app.wsgi_app)
 
-ssh = paramiko.SSHClient()
-ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-ssh.load_system_host_keys()
 
 
 
 def generate_random_string(size):
     return ''.join(random.SystemRandom().choice(string.ascii_lowercase + string.digits) for _ in range(size))
 
-def execute_command(c):
+def execute_command(c,ssh):
     stdin, stdout, stderr = ssh.exec_command(c)
     return (stdout.read(),stderr.read())
 
-def execute_command_with_input(c,g = False):
+def execute_command_with_input(c,g = False,ssh):
     stdin, stdout, stderr = ssh.exec_command(c,get_pty = g)
     return (stdin,stdout,stderr)
 
@@ -380,6 +377,9 @@ def install_wordpress(email,password,domain,username):
 
 def connect_to_ssh(host,domain,email,username,password,sid):
     try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.load_system_host_keys()
         step = {}
         print "Creating Connection"
         k = paramiko.RSAKey.from_private_key_file("/home/sachin/.ssh/id_rsa" , password='fuckoffanddie')
