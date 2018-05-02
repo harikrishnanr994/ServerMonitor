@@ -429,7 +429,7 @@ def connect_to_ssh(host,domain,email,username,password,sid):
 
     except paramiko.BadHostKeyException:
         os.system('ssh-keygen -f "/home/sachin/.ssh/known_hosts" -R ' + host)
-        connect_to_ssh(host,domain,email,username,password)
+        connect_to_ssh(host,domain,email,username,password,sid)
     finally:
        print "Closing connection"
        ssh.close()

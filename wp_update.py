@@ -6,14 +6,15 @@ import shutil
 import random
 import string
 
-host = '139.59.41.122'
-domain_name = 'mymds.xyz'
-username = 'root'
-password = 'fuckoffanddie'
-email = 'sachingiridhar@gmail.com'
+host = '104.211.188.1'
+domain_name = 'cloudeity.tk'
+username = 'admin'
+password = 'password'
+email = 'phacsindevs@gmail.com'
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 ssh.load_system_host_keys()
+local_username =  os.popen("whoami").read().replace('\n', '')
 
 def generate_random_string(size):
     return ''.join(random.SystemRandom().choice(string.ascii_lowercase + string.digits) for _ in range(size))
@@ -83,17 +84,25 @@ def write_default_values_for_mariadb(inp):
     inp.write('y\n')
     inp.flush()
 
-def write_to_wp_config_file():
+def write_to_wp_config_file(ssl=True):
     secrets = []
     with open("config_files/temp_secret.php",'r') as fp:
         for line in fp:
             secrets.append(line)
-    with open('config_files/wp-config-sample.php','r') as fin, open('config_files/wp-config.php','w') as fout:
-        for i,wp_line in enumerate(fin):
-            if i>=31 and i<=38:
-                fout.write(secrets[i-31])
-            else:
-                fout.write(wp_line)
+    if ssl:
+        with open('config_files/wp-config-sample.php','r') as fin, open('config_files/wp-config.php','w') as fout:
+            for i,wp_line in enumerate(fin):
+                if i>=31 and i<=38:
+                    fout.write(secrets[i-31])
+                else:
+                    fout.write(wp_line)
+    else:
+        with open('config_files/wp-config-sample_without_ssl.php','r') as fin, open('config_files/wp-config.php','w') as fout:
+            for i,wp_line in enumerate(fin):
+                if i>=31 and i<=38:
+                    fout.write(secrets[i-31])
+                else:
+                    fout.write(wp_line)
 
 def write_commands_for_mariadb(inp):
     inp.write('CREATE DATABASE wordpress DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;\n')
@@ -139,8 +148,9 @@ def add_swap_space(swap):
     with open('config_files/sysctl.conf', 'r') as myfile:
         data = myfile.read()
         ftp = ssh.open_sftp()
-        ftp.put('config_files/sysctl.conf','/etc/sysctl.conf')
+        ftp.put('config_files/sysctl.conf','sysctl.conf')
         ftp.close()
+        op,err = execute_command('sudo mv sysctl.conf /etc/')
         op,err = execute_command('sudo cat /etc/sysctl.conf')
         print op,err
         if op == data:
@@ -162,10 +172,15 @@ def install_nginx():
     with open('config_files/def', 'r') as fin,open('config_files/' + random +'/default','w') as fout:
         data = fin.read().replace('139.59.15.110',host).replace('mymds.xyz',domain_name)
         fout.write(data)
+    ftp = ssh.open_sftp()
+    ftp.put('config_files/letsencrypt.conf','letsencrypt.conf')
+    ftp.close()
+    op,err= execute_command('sudo mv letsencrypt.conf /etc/nginx/snippets/letsencrypt.conf')
     op,err= execute_command('sudo mv /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default.backup')
     ftp = ssh.open_sftp()
-    ftp.put('config_files/'+ random + '/default','/etc/nginx/sites-enabled/default')
+    ftp.put('config_files/'+ random + '/default','default')
     ftp.close()
+    op,err= execute_command('sudo mv default /etc/nginx/sites-enabled/default')
     op,err= execute_command('sudo cat /etc/nginx/sites-enabled/default')
     print op,err
     if op == data:
@@ -188,13 +203,14 @@ def install_varnish():
     with open('config_files/varnish.service', 'r') as myfile:
         data = myfile.read()
         ftp = ssh.open_sftp()
-        ftp.put('config_files/varnish.service','/lib/systemd/system/varnish.service')
+        ftp.put('config_files/varnish.service','varnish.service')
         ftp.close()
+        op,err= execute_command('sudo mv varnish.service /lib/systemd/system/varnish.service')
         op,err= execute_command('sudo cat /lib/systemd/system/varnish.service')
         print op,err
         if op == data:
             print "Varnish Config written Successfully"
-    op,err = execute_command('systemctl daemon-reload')
+    op,err = execute_command('sudo systemctl daemon-reload')
     op,err = execute_command('sudo service varnish restart')
     op,err = execute_command('sudo service nginx start')
     op,err = execute_command('curl ' + host)
@@ -231,7 +247,9 @@ def initialize_firewall():
     print op,err
 
 def install_ssl():
-    inp,op,err = execute_command_with_input("sudo certbot --nginx -d " + domain_name + " -d www." + domain_name,True)
+    op,err= execute_command('sudo mkdir -p /var/www/letsencrypt/.well-known/acme-challenge')
+    print op,err
+    inp,op,err = execute_command_with_input("sudo certbot certonly --webroot --agree-tos --no-eff-email --email " + email + " -w /var/www/letsencrypt -d " + domain_name + " -d www." + domain_name,True)
     for line in iter(op.readline, ""):
         if line.startswith(const.LETS_ENCRYPT_DEFAULT):
             write_default_values_for_ssl(inp)
@@ -246,6 +264,10 @@ def install_ssl():
 
 
 def configure_nginx_for_ssl():
+    ftp = ssh.open_sftp()
+    ftp.put('config_files/ssl.conf','ssl.conf')
+    ftp.close()
+    op,err = execute_command('sudo mv ssl.conf /etc/nginx/snippets/ssl.conf')
     random = generate_random_string(16)
     if not os.path.exists('config_files/' + random):
         os.makedirs('config_files/' + random)
@@ -254,8 +276,9 @@ def configure_nginx_for_ssl():
         fout.write(data)
     op,err= execute_command('sudo mv /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default.backup')
     ftp = ssh.open_sftp()
-    ftp.put('config_files/' +  random +'/default','/etc/nginx/sites-enabled/default')
+    ftp.put('config_files/' + random +'/default','default')
     ftp.close()
+    op,err= execute_command('sudo mv default /etc/nginx/sites-enabled/default')
     op,err= execute_command('sudo cat /etc/nginx/sites-enabled/default')
     print op,err
     if op == data:
@@ -265,7 +288,7 @@ def configure_nginx_for_ssl():
         print "nginx Configuation Successful...Now Restarting nginx"
     op,err= execute_command('sudo systemctl restart nginx.service')
     print op,err
-    #shutil.rmtree('config_files/' + random)
+    shutil.rmtree('config_files/' + random)
 
 def install_php():
     while True:
@@ -281,8 +304,9 @@ def install_php():
     with open('config_files/index.php', 'r') as myfile:
         data = myfile.read()
         ftp = ssh.open_sftp()
-        ftp.put('config_files/index.php','/var/www/html/index.php')
+        ftp.put('config_files/index.php','index.php')
         ftp.close()
+        op,err= execute_command('sudo mv index.php /var/www/html/index.php')
         op,err= execute_command('sudo cat /var/www/html/index.php')
         print op,err
         if op == data:
@@ -309,19 +333,19 @@ def install_mariadb():
     op,err= execute_command('sudo systemctl restart php7.0-fpm')
     print op,err
 
-def install_wordpress():
+def install_wordpress(ssl = True):
     print "Downloading Wordpress"
-    op,err= execute_command('curl -O https://wordpress.org/latest.tar.gz')
+    op,err= execute_command('sudo curl -O https://wordpress.org/latest.tar.gz')
     print op,err
-    op,err= execute_command('tar xzvf latest.tar.gz')
+    op,err= execute_command('sudo tar xzvf latest.tar.gz')
     print op,err
     print "Wordpress Downloaded"
-    op,err= execute_command('cp wordpress/wp-config-sample.php wordpress/wp-config.php')
+    op,err= execute_command('sudo cp wordpress/wp-config-sample.php wordpress/wp-config.php')
     print op,err
-    op,err= execute_command('mkdir wordpress/wp-content/upgrade')
+    op,err= execute_command('sudo mkdir wordpress/wp-content/upgrade')
     op,err= execute_command('sudo cp -a wordpress/. /var/www/html')
     print op,err
-    op,err= execute_command('sudo chown -R root:www-data /var/www/html')
+    op,err= execute_command('sudo chown -R www-data:www-data /var/www/html')
     print op,err
     op,err= execute_command('sudo find /var/www/html -type d -exec chmod g+s {} \;')
     print op,err
@@ -335,43 +359,56 @@ def install_wordpress():
     print op,err
     with open('config_files/temp_secret.php', 'w') as myfile:
         myfile.write(op)
-    write_to_wp_config_file()
+    write_to_wp_config_file(ssl)
     ftp = ssh.open_sftp()
-    ftp.put('config_files/wp-config.php','/var/www/html/wp-config.php')
+    ftp.put('config_files/wp-config.php','wp-config.php')
     ftp.close()
+    op,err= execute_command('sudo mv wp-config.php /var/www/html/wp-config.php')
     temp_secret = op
     op,err= execute_command('sudo cat /var/www/html/wp-config.php')
     print op,err
     print "Wordpress Configuration File Created"
     op,err= execute_command('curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar')
     print op,err
-    op,err= execute_command('chmod +x wp-cli.phar')
+    op,err= execute_command('sudo chmod +x wp-cli.phar')
     print op,err
     op,err= execute_command('sudo mv wp-cli.phar /usr/local/bin/wp')
     print op,err
     op,err= execute_command('sudo wp cli version --allow-root')
     print op,err
-    op,err= execute_command('sudo wp core install --url="' +  domain_name + '"  --title="Your Blog Title" --admin_user="' + username + '" --admin_password="' +  password + '" --admin_email="' + email + '" --path="/var/www/html/" --allow-root')
-    print op,err
-    op,err= execute_command("sudo wp search-replace 'http://" + domain_name + "' 'https://" + domain_name + "' --skip-columns=guid --allow-root --path='/var/www/html/'")
-    print op,err
+    if ssl:
+        op,err= execute_command('sudo wp core install --url="www.' +  domain_name + '"  --title="Website created with Cadmium75" --admin_user="' + username + '" --admin_password="' +  password + '" --admin_email="' + email + '" --path="/var/www/html/" --allow-root')
+        print op,err
+        op,err= execute_command("sudo wp search-replace 'https://www." + domain_name + "' 'http://www." + domain_name + "' --skip-columns=guid --allow-root --path='/var/www/html/'")
+        print op,err
+    else:
+        op,err= execute_command('sudo wp core install --url=' + host + '  --title="Website created with Cadmium75" --admin_user="' + username + '" --admin_password="' +  password + '" --admin_email="' + email + '" --path="/var/www/html/" --allow-root')
+        print op,err
+
+def install_with_ssl():
+    install_ssl()
+    configure_nginx_for_ssl()
+    install_php()
+    install_mariadb()
+    install_wordpress()
+
+def install_without_ssl():
+    install_php()
+    install_mariadb()
+    install_wordpress(False)
 try:
    print "Creating Connection"
-   k = paramiko.RSAKey.from_private_key_file("/home/sachin/.ssh/id_rsa" , password=password)
-   ssh.connect(host, username=username, pkey=k)
+   k = paramiko.RSAKey.from_private_key_file("/home/sachin/.ssh/id_rsa" , password='fuckoffanddie')
+   ssh.connect(host, username='sachin', pkey=k)
    print "Connected"
    initialize_and_update_server()
    add_swap_space('4G')
    install_nginx()
    install_varnish()
    initialize_firewall()
-   install_ssl()
-   configure_nginx_for_ssl()
-   install_php()
-   install_mariadb()
-   install_wordpress()
+   install_with_ssl()
 except paramiko.BadHostKeyException:
-    os.system('ssh-keygen -f "/home/sachin/.ssh/known_hosts" -R ' + host)
+    os.system('ssh-keygen -f "/home/' + local_username + '/.ssh/known_hosts" -R ' + host)
 finally:
    print "Closing connection"
    ssh.close()
